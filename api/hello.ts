@@ -1,13 +1,12 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { kv } from '@vercel/kv';
 
-// Define the structure of our heart rate data
 interface HeartRateData {
   heartRate: number;
   timestamp: string;
 }
 
-// Initialize an empty array to serve as our queue
-let heartRateQueue: HeartRateData[] = [];
+const QUEUE_KEY = 'heart-rate-queue';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -19,14 +18,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Add the new heart rate data to the queue
-      heartRateQueue.push({ heartRate, timestamp });
+      await kv.lpush(QUEUE_KEY, JSON.stringify({ heartRate, timestamp }));
       return res.status(200).json({ message: 'Heart rate data added to queue' });
     } 
     else if (req.method === 'GET') {
-      if (heartRateQueue.length > 0) {
-        // Remove and return the first item from the queue
-        const nextItem = heartRateQueue.shift();
-        return res.status(200).json(nextItem);
+      // Remove and return the last item from the queue
+      const item = await kv.rpop(QUEUE_KEY);
+      
+      if (item) {
+        const data: HeartRateData = JSON.parse(item);
+        return res.status(200).json(data);
       } else {
         return res.status(404).json({ message: 'Queue is empty' });
       }
