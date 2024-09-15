@@ -6,10 +6,24 @@ interface HeartRateData {
 }
 
 // Use a global variable to store the queue
-// Note: This will reset on each deployment and doesn't persist across multiple instances
 let queue: HeartRateData[] = [];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // Handle OPTIONS method for preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   try {
     if (req.method === 'POST') {
       const { heartRate, timestamp } = req.body;
@@ -32,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     } 
     else {
-      res.setHeader('Allow', ['POST', 'GET']);
+      res.setHeader('Allow', ['GET', 'POST', 'OPTIONS']);
       return res.status(405).end(`Method ${req.method} Not Allowed`);
     }
   } catch (error) {
